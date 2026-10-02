@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="First Aid">
+<meta name="description" content="Emergency first-aid steps: CPR, choking, bleeding, burns and allergy. Glanceable on Meta Ray-Ban Display.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>First Aid</title>
+<style>
+:root{--accent:#FB7185;--bg:#0B0F14;--card:#161C26;--line:#2A3442;--text:#F3F6FA;--dim:#9AA6B6;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;min-height:100dvh;background:#000;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.app{width:min(480px,100vw - 24px);height:100dvh;max-height:780px;display:flex;flex-direction:column;padding:16px 14px 12px;background:var(--bg);border-radius:18px;gap:10px}
+h1{font-size:20px;text-align:center}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tabs button{min-height:48px;font-size:13px;padding:4px 2px;color:var(--dim)}
+.tabs button.active{background:var(--accent);border-color:var(--accent);color:#101418;font-weight:700}
+button{min-height:48px;font-size:16px;font-family:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:active{transform:scale(.98)}
+.stephead{display:flex;justify-content:space-between;align-items:baseline}
+.stephead .title{font-size:18px;font-weight:700;color:var(--accent)}
+.stephead .count{font-size:13px;color:var(--dim)}
+.scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.step{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.step.current{border-color:var(--accent);background:#23161C}
+.step .n{flex:0 0 34px;height:34px;border-radius:50%;background:var(--line);color:var(--text);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+.step.current .n{background:var(--accent);color:#101418}
+.step p{font-size:17px;line-height:1.35}
+.nav{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nav button{font-size:18px;font-weight:700}
+.foot{text-align:center;font-size:13px;color:var(--dim);padding:2px 0}
+.foot b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#x1FA7A; First Aid</h1>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="stephead"><div class="title" id="cardTitle">CPR</div><div class="count" id="stepCount">Step 1 of 6</div></div>
+  <div class="scroll" id="steps"></div>
+  <div class="nav">
+    <button id="prevBtn" data-focusable>&#9664; Prev</button>
+    <button id="nextBtn" data-focusable>Next &#9654;</button>
+  </div>
+  <div class="foot"><b>&#9888;&#xFE0F; In a real emergency, call your local emergency number.</b></div>
+</div>
+<script>
+(function(){
+"use strict";
+var CARDS=[
+ {name:"CPR",steps:[
+  "Check responsiveness \u2014 shout and shake their shoulders.",
+  "Call emergency services (or send someone to call).",
+  "Place the heel of your hand on the center of the chest.",
+  "Push hard and fast: 100\u2013120 per minute, 5\u20136 cm deep.",
+  "Keep going until help arrives or the person starts moving.",
+  "If trained: 30 compressions, then 2 rescue breaths."]},
+ {name:"Choking",steps:[
+  "Ask \u2018are you choking?\u2019 \u2014 if they can\u2019t speak or cough, act.",
+  "Lean them forward.",
+  "Give 5 sharp back blows between the shoulder blades.",
+  "Give 5 abdominal thrusts: fist above the navel, pull in and up.",
+  "Repeat 5 blows + 5 thrusts until the object clears.",
+  "If they collapse, call emergency and start CPR."]},
+ {name:"Bleeding",steps:[
+  "Call emergency services.",
+  "Press firmly on the wound with a cloth or your hand.",
+  "Do NOT remove soaked cloth \u2014 add more layers on top.",
+  "Keep pressure until help arrives.",
+  "For a limb that won\u2019t stop bleeding, improvise a tourniquet above the wound and note the time."]},
+ {name:"Burns",steps:[
+  "Cool the burn under cool running water for 20 minutes.",
+  "Remove jewelry and loose clothing near the burn (not stuck fabric).",
+  "Cover loosely with cling film or a clean cloth.",
+  "Do NOT pop blisters. Do NOT apply ice, butter or creams.",
+  "Get medical help for large/deep burns, or burns on face, hands or joints."]},
+ {name:"Allergy",steps:[
+  "Ask if they carry an epinephrine auto-injector \u2014 help them use it.",
+  "Call emergency services immediately.",
+  "Help them sit up if struggling to breathe, or lie down if dizzy.",
+  "Do NOT give food or drink.",
+  "If they stop breathing, start CPR."]}
+];
+var tabIdx=0, stepIdx=0;
+var tabsEl=document.getElementById("tabs");
+var stepsEl=document.getElementById("steps");
+var titleEl=document.getElementById("cardTitle");
+var countEl=document.getElementById("stepCount");
+var focusables=[];
+var focusPos=0;
+
+function clampStep(i,n){ return Math.max(0, Math.min(n-1, i)); }
+
+function renderTabs(){
+  tabsEl.innerHTML="";
+  CARDS.forEach(function(c,i){
+    var b=document.createElement("button");
+    b.textContent=c.name;
+    b.setAttribute("data-focusable","");
+    b.setAttribute("role","tab");
+    if(i===tabIdx) b.classList.add("active");
+    b.addEventListener("click",function(){ setTab(i); });
+    b.addEventListener("focus",function(){ if(tabIdx!==i) setTab(i); });
+    tabsEl.appendChild(b);
+  });
+}
+function renderCard(){
+  var card=CARDS[tabIdx];
+  titleEl.textContent=card.name;
+  countEl.textContent="Step "+(stepIdx+1)+" of "+card.steps.length;
+  stepsEl.innerHTML="";
+  card.steps.forEach(function(s,i){
+    var d=document.createElement("div");
+    d.className="step"+(i===stepIdx?" current":"");
+    var n=document.createElement("div"); n.className="n"; n.textContent=(i+1);
+    var p=document.createElement("p"); p.textContent=s;
+    d.appendChild(n); d.appendChild(p);
+    stepsEl.appendChild(d);
+  });
+  var cur=stepsEl.children[stepIdx];
+  if(cur) cur.scrollIntoView({block:"nearest"});
+}
+function refreshFocusables(){
+  focusables=Array.prototype.slice.call(document.querySelectorAll("[data-focusable]"));
+}
+function setTab(i){
+  tabIdx=Math.max(0,Math.min(CARDS.length-1,i));
+  stepIdx=0;
+  renderTabs(); renderCard(); refreshFocusables();
+}
+function moveFocus(d){
+  if(!focusables.length) return;
+  focusPos=((focusPos+d)%focusables.length+focusables.length)%focusables.length;
+  focusables[focusPos].focus();
+}
+function prevStep(){ stepIdx=clampStep(stepIdx-1, CARDS[tabIdx].steps.length); renderCard(); }
+function nextStep(){ stepIdx=clampStep(stepIdx+1, CARDS[tabIdx].steps.length); renderCard(); }
+
+document.getElementById("prevBtn").addEventListener("click",prevStep);
+document.getElementById("nextBtn").addEventListener("click",nextStep);
+
+document.addEventListener("keydown",function(e){
+  if(e.key==="ArrowRight"){ e.preventDefault(); moveFocus(1); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); moveFocus(-1); }
+  else if(e.key==="ArrowDown"){ e.preventDefault(); moveFocus(1); }
+  else if(e.key==="ArrowUp"){ e.preventDefault(); moveFocus(-1); }
+});
+document.addEventListener("focusin",function(e){
+  var i=focusables.indexOf(e.target);
+  if(i>=0) focusPos=i;
+});
+
+renderTabs(); renderCard(); refreshFocusables();
+})();
+</script>
+</body>
+</html>
