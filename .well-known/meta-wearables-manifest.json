@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "First Aid",
+  "description": "Emergency first-aid steps: CPR, choking, bleeding, burns, allergy.",
+  "appearance": {
+    "theme_color": "#FB7185",
+    "icon": {
+      "src": "../icon-mono.png",
+      "type": "monochrome"
+    },
+    "icon_background": {
+      "colors": [
+        "#FB7185",
+        "#9E2B3C",
+        "#5C1A24",
+        "#0B0F14"
+      ],
+      "stops": [
+        0.0,
+        0.33,
+        0.66,
+        1.0
+      ],
+      "inner_glow_color": "#FECDD3"
+    }
+  }
+}
